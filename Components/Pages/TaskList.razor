@@ -1,0 +1,113 @@
+@page "/tasks"
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+@using DayPlanner.Models
+@using DayPlanner.Data
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<PageTitle>Task List</PageTitle>
+
+<h1>Tasks</h1>
+
+@if (activities == null)
+{
+    <p>
+        <em>Loading tasks...</em>
+    </p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Description</th>
+            <th>Important</th>
+            <th>Done</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var activity in activities)
+        {
+            <tr>
+                <td>@activity.Description</td>
+                <td>
+                    <input type="checkbox" checked="@activity.IsImportant" @onchange="() => ToggleImportance(activity)"/>
+                </td>
+                <td>
+                    <input type="checkbox" checked="@activity.IsDone" @onclick="() => MarkAsDone(activity)" />
+                </td>
+                <td>
+                    <button class="btn btn-danger" @onclick="() => DeleteTask(activity)">Delete</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <h2>Add New Task</h2>
+    <div class="form-group">
+        <label for="description">Description:</label>
+        <input type="text" class="form-control" id="description" @bind="newActivity.Description"/>
+    </div>
+    <div class="form-group">
+        <label for="isImportant">Important:</label>
+        <input type="checkbox" id="isImportant" @bind="newActivity.IsImportant"/>
+    </div>
+    <button class="btn btn-primary" @onclick="AddTask">Add Task</button>
+}
+
+@inject ApplicationDbContext dbContext;
+
+@code {
+    private Activity[]? activities;
+    private Activity newActivity = new Activity();
+
+    protected override async Task OnInitializedAsync()
+    {
+        activities = await Task.FromResult(GetActivities());
+    }
+
+    private Activity[] GetActivities()
+    {
+        return dbContext.Activities.ToArray();
+    }
+
+    private void ToggleImportance(Activity activity)
+    {
+        activity.IsImportant = !activity.IsImportant;
+        dbContext.Update(activity);
+        dbContext.SaveChanges();
+    }
+
+    private void MarkAsDone(Activity activity)
+    {
+        activity.IsDone = !activity.IsDone;
+        dbContext.Update(activity);
+        dbContext.SaveChanges();
+    }
+
+    private void DeleteTask(Activity activity)
+    {
+        Console.WriteLine("Deleting task");
+        dbContext.Activities.Remove(activity);
+        dbContext.SaveChanges();
+        activities = activities.Where(x => x.Id != activity.Id).ToArray();
+    }
+
+    private async Task AddTask()
+    {
+        // Adding the new task to the database
+        Console.WriteLine("Adding task");
+        dbContext.Activities.Add(newActivity);
+        dbContext.SaveChanges();
+
+        // Update the local list of activities to reflect the new state
+        activities = GetActivities();
+
+        // Reset the newActivity object to clear the form
+        newActivity = new Activity();
+    }
+
+}
